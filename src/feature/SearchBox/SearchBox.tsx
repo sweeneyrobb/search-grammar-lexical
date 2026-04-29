@@ -1,11 +1,14 @@
+import { useEffect } from 'react'
+
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 
-import { dataToLexicalState } from './helper/index.js'
+import { populateSearchBoxRoot } from './helper/index.js'
 import type { SearchBoxDataItem } from './type.js'
 
 import './SearchBox.style.css'
@@ -18,15 +21,24 @@ const onError = (error: Error) => {
     console.error(error)
 }
 
-export function SearchBox({ data }: SearchBoxProps) {
-    const editorState = JSON.stringify(dataToLexicalState(data))
+function SearchBoxDataPlugin({ data }: SearchBoxProps) {
+    const [editor] = useLexicalComposerContext()
 
+    useEffect(() => {
+        editor.update(() => {
+            populateSearchBoxRoot(data)
+        })
+    }, [data, editor])
+
+    return null
+}
+
+export function SearchBox({ data }: SearchBoxProps) {
     return (
         <LexicalComposer
             initialConfig={{
                 namespace: 'SearchBox',
                 onError,
-                editorState,
             }}
         >
             <div className="editor-container">
@@ -44,6 +56,7 @@ export function SearchBox({ data }: SearchBoxProps) {
                     />
                     <HistoryPlugin />
                     <AutoFocusPlugin />
+                    <SearchBoxDataPlugin data={data} />
                 </div>
             </div>
         </LexicalComposer>

@@ -1,1 +1,1 @@
-export { dataToLexicalState } from './dataToLexicalState.js'
+export { populateSearchBoxRoot } from './populateSearchBoxRoot.js'
