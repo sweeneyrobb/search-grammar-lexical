@@ -10,16 +10,18 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import {
     $findMatchingParent,
     $getNearestNodeFromDOMNode,
+    $getRoot,
     $getSelection,
     $isElementNode,
     $isRangeSelection,
     CLICK_COMMAND,
     COMMAND_PRIORITY_HIGH,
     KEY_BACKSPACE_COMMAND,
+    KEY_ENTER_COMMAND,
     type LexicalNode,
 } from 'lexical'
 
-import { populateSearchBoxRoot } from './helper/index.js'
+import { parseSearchBoxText, populateSearchBoxRoot } from './helper/index.js'
 import {
     $isSearchBoxPairNode,
     SearchBoxUnstructuredTextNode,
@@ -148,9 +150,23 @@ function SearchBoxInteractionPlugin() {
             COMMAND_PRIORITY_HIGH,
         )
 
+        const removeEnterCommand = editor.registerCommand(
+            KEY_ENTER_COMMAND,
+            (event) => {
+                event?.preventDefault()
+
+                const text = $getRoot().getTextContent()
+                populateSearchBoxRoot(parseSearchBoxText(text))
+
+                return true
+            },
+            COMMAND_PRIORITY_HIGH,
+        )
+
         return () => {
             removeClickCommand()
             removeBackspaceCommand()
+            removeEnterCommand()
         }
     }, [editor])
 

@@ -10,6 +10,26 @@ import {
 } from '../node/index.js'
 import type { SearchBoxData } from '../type.js'
 
+function formatSearchBoxKey(key: string): string {
+    if (!/[\s:]/.test(key)) {
+        return key
+    }
+
+    return `[${key}]`
+}
+
+function formatSearchBoxValue(value: string): string {
+    if (!/\s/.test(value)) {
+        return value
+    }
+
+    if (!value.includes('"')) {
+        return `"${value}"`
+    }
+
+    return `[${value}]`
+}
+
 export function populateSearchBoxRoot(data: SearchBoxData) {
     const root = $getRoot()
     const paragraph = $createParagraphNode()
@@ -19,14 +39,14 @@ export function populateSearchBoxRoot(data: SearchBoxData) {
         const pairNode = $createSearchBoxPairNode()
 
         pairNode.append(
-            $createTextNode(`${key}: `).toggleFormat('bold'),
-            $createTextNode(value),
+            $createTextNode(`${formatSearchBoxKey(key)}:`).toggleFormat('bold'),
+            $createTextNode(formatSearchBoxValue(value)),
         )
 
         paragraph.append(pairNode)
 
         if (index < structuredValue.length - 1) {
-            paragraph.append($createTextNode(' | '))
+            paragraph.append($createTextNode(' '))
         }
     })
 
