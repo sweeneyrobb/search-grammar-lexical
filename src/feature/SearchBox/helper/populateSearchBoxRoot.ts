@@ -4,14 +4,18 @@ import {
     $getRoot,
 } from 'lexical'
 
-import { $createSearchBoxPairNode } from '../node/index.js'
-import type { SearchBoxDataItem } from '../type.js'
+import {
+    $createSearchBoxPairNode,
+    $createSearchBoxUnstructuredTextNode,
+} from '../node/index.js'
+import type { SearchBoxData } from '../type.js'
 
-export function populateSearchBoxRoot(data: SearchBoxDataItem[]) {
+export function populateSearchBoxRoot(data: SearchBoxData) {
     const root = $getRoot()
     const paragraph = $createParagraphNode()
+    const { structuredValue, unstructuredValue } = data
 
-    data.forEach(({ key, value }, index) => {
+    structuredValue.forEach(({ key, value }, index) => {
         const pairNode = $createSearchBoxPairNode()
 
         pairNode.append(
@@ -21,10 +25,18 @@ export function populateSearchBoxRoot(data: SearchBoxDataItem[]) {
 
         paragraph.append(pairNode)
 
-        if (index < data.length - 1) {
+        if (index < structuredValue.length - 1) {
             paragraph.append($createTextNode(' | '))
         }
     })
+
+    if (unstructuredValue) {
+        if (structuredValue.length > 0) {
+            paragraph.append($createTextNode(' '))
+        }
+
+        paragraph.append($createSearchBoxUnstructuredTextNode(unstructuredValue))
+    }
 
     root.clear()
     root.append(paragraph)

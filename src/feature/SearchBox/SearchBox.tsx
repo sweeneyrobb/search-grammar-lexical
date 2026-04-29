@@ -22,15 +22,16 @@ import {
 import { populateSearchBoxRoot } from './helper/index.js'
 import {
     $isSearchBoxPairNode,
+    SearchBoxUnstructuredTextNode,
     SearchBoxPairNode,
     type SearchBoxPairNode as SearchBoxPairNodeType,
 } from './node/index.js'
-import type { SearchBoxDataItem } from './type.js'
+import type { SearchBoxData } from './type.js'
 
 import './SearchBox.style.css'
 
 type SearchBoxProps = {
-    data: SearchBoxDataItem[]
+    data: SearchBoxData
 }
 
 const onError = (error: Error) => {
@@ -161,7 +162,7 @@ export function SearchBox({ data }: SearchBoxProps) {
         <LexicalComposer
             initialConfig={{
                 namespace: 'SearchBox',
-                nodes: [SearchBoxPairNode],
+                nodes: [SearchBoxPairNode, SearchBoxUnstructuredTextNode],
                 onError,
                 theme,
             }}

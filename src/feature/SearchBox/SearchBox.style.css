@@ -24,6 +24,11 @@
     font-weight: 700;
 }
 
+.search-box-unstructured-text {
+    color: #6b7280;
+    font-style: italic;
+}
+
 .editor-placeholder {
     color: #999;
     left: 10px;
