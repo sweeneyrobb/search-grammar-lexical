@@ -9,6 +9,21 @@
     outline: none;
 }
 
+.search-box-pair {
+    background: #eef5ff;
+    border: 1px solid #b8d7ff;
+    border-radius: 4px;
+    color: #1f2937;
+    cursor: pointer;
+    display: inline;
+    padding: 1px 4px;
+}
+
+.search-box-key {
+    color: #164e63;
+    font-weight: 700;
+}
+
 .editor-placeholder {
     color: #999;
     left: 10px;

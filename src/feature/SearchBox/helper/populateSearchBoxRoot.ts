@@ -4,6 +4,7 @@ import {
     $getRoot,
 } from 'lexical'
 
+import { $createSearchBoxPairNode } from '../node/index.js'
 import type { SearchBoxDataItem } from '../type.js'
 
 export function populateSearchBoxRoot(data: SearchBoxDataItem[]) {
@@ -11,10 +12,14 @@ export function populateSearchBoxRoot(data: SearchBoxDataItem[]) {
     const paragraph = $createParagraphNode()
 
     data.forEach(({ key, value }, index) => {
-        paragraph.append(
+        const pairNode = $createSearchBoxPairNode()
+
+        pairNode.append(
             $createTextNode(`${key}: `).toggleFormat('bold'),
             $createTextNode(value),
         )
+
+        paragraph.append(pairNode)
 
         if (index < data.length - 1) {
             paragraph.append($createTextNode(' | '))
