@@ -1,5 +1,5 @@
 {
-    "name": "search-grammer-lexical",
+    "name": "search-grammar-lexical",
     "version": "1.0.0",
     "main": "index.js",
     "type": "module",
@@ -13,12 +13,17 @@
     "author": "",
     "license": "ISC",
     "description": "",
+    "dependencies": {
+        "@lexical/react": "^0.44.0",
+        "@lexical/rich-text": "^0.44.0",
+        "@lexical/text": "^0.44.0",
+        "lexical": "^0.44.0"
+    },
     "devDependencies": {
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.1",
         "prettier": "^3.8.3",
-        "react-dom": "^19.2.5",
         "typescript": "^6.0.3",
         "vite": "^8.0.10"
     }
