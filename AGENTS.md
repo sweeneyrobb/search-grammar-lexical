@@ -4,6 +4,7 @@
 
 - Use barrel exports for components: each component folder should export via an `index.ts`.
 - The primary component should be named the same as the folder it is exporting from.
+- Feature-specific subcomponents should live in a `component/` folder under that feature.
 - Use a `<Component>.container.tsx` file when a component needs data preparation, state orchestration, or wiring before rendering the downstream component.
 - Keep test, sample, or static fixture data in a colocated `constant.ts` file when it belongs to a feature or component.
 - Styling should be named the same as a component but include the suffix `.style`, for example `<Component>/<Component>.style.css`.

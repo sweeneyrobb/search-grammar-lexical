@@ -51,6 +51,10 @@ export function populateSearchBoxRoot(data: SearchBoxData) {
         paragraph.append($createSearchBoxUnstructuredTextNode(unstructuredValue))
     }
 
+    if (!paragraph.getTextContent()) {
+        paragraph.append($createSearchBoxDelimiterNode())
+    }
+
     root.clear()
     root.append(paragraph)
     paragraph.selectEnd()

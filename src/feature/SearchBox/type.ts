@@ -7,3 +7,8 @@ export type SearchBoxData = {
     structuredValue: SearchBoxDataItem[]
     unstructuredValue: string
 }
+
+export type SearchBoxAutocompleteValueOption = {
+    key: string
+    value: string
+}
