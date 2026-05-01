@@ -1,8 +1,4 @@
-import {
-    $createParagraphNode,
-    $createTextNode,
-    $getRoot,
-} from 'lexical'
+import { $createParagraphNode, $createTextNode, $getRoot } from 'lexical'
 
 import {
     $createSearchBoxDelimiterNode,
@@ -36,11 +32,14 @@ export function populateSearchBoxRoot(data: SearchBoxData) {
     const paragraph = $createParagraphNode()
     const { structuredValue, unstructuredValue } = data
 
-    structuredValue.forEach(({ key, value }) => {
+    structuredValue.forEach(({ displayName, key, value }) => {
         const pairNode = $createSearchBoxPairNode()
+        const label = displayName ?? key
 
         pairNode.append(
-            $createTextNode(`${formatSearchBoxKey(key)}:`).toggleFormat('bold'),
+            $createTextNode(`${formatSearchBoxKey(label)}:`).toggleFormat(
+                'bold',
+            ),
             $createTextNode(formatSearchBoxValue(value)),
         )
 
@@ -48,7 +47,9 @@ export function populateSearchBoxRoot(data: SearchBoxData) {
     })
 
     if (unstructuredValue) {
-        paragraph.append($createSearchBoxUnstructuredTextNode(unstructuredValue))
+        paragraph.append(
+            $createSearchBoxUnstructuredTextNode(unstructuredValue),
+        )
     }
 
     if (!paragraph.getTextContent()) {

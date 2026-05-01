@@ -1,40 +1,42 @@
 import type {
+    SearchBoxAutocompleteKeyOption,
     SearchBoxAutocompleteValueOption,
     SearchBoxData,
 } from './type.js'
 
 export const SEARCH_BOX_SAMPLE_DATA: SearchBoxData = {
     structuredValue: [
-        { key: 'Name', value: 'John Doe' },
-        { key: 'Age', value: '30' },
-        { key: 'City', value: 'New York' },
+        { displayName: 'Name', key: 'name', value: 'John Doe' },
+        { displayName: 'Age', key: 'age', value: '30' },
+        { displayName: 'City', key: 'city', value: 'New York' },
     ],
     unstructuredValue: 'status active',
 }
 
-export const SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION = [
-    'Name',
-    'Age',
-    'City',
-    'Status',
-    'Assignee',
-    'Priority',
-]
+export const SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION: SearchBoxAutocompleteKeyOption[] =
+    [
+        { displayName: 'Name', key: 'name' },
+        { displayName: 'Age', key: 'age' },
+        { displayName: 'City', key: 'city' },
+        { displayName: 'Status', key: 'status' },
+        { displayName: 'Assignee', key: 'assignee' },
+        { displayName: 'Priority', key: 'priority' },
+    ]
 
 export const SEARCH_BOX_AUTOCOMPLETE_VALUE_OPTION: SearchBoxAutocompleteValueOption[] =
     [
-        { key: 'City', value: 'Cairo' },
-        { key: 'City', value: 'Calgary' },
-        { key: 'City', value: 'California' },
-        { key: 'City', value: 'Cambridge' },
-        { key: 'City', value: 'New York' },
-        { key: 'Status', value: 'open' },
-        { key: 'Status', value: 'pending' },
-        { key: 'Status', value: 'in progress' },
-        { key: 'Status', value: 'closed' },
-        { key: 'Priority', value: 'high' },
-        { key: 'Priority', value: 'medium' },
-        { key: 'Priority', value: 'low' },
-        { key: 'Age', value: '30' },
-        { key: 'Name', value: 'John Doe' },
+        { key: 'city', value: 'Cairo' },
+        { key: 'city', value: 'Calgary' },
+        { key: 'city', value: 'California' },
+        { key: 'city', value: 'Cambridge' },
+        { key: 'city', value: 'New York' },
+        { key: 'status', value: 'open' },
+        { key: 'status', value: 'pending' },
+        { key: 'status', value: 'in progress' },
+        { key: 'status', value: 'closed' },
+        { key: 'priority', value: 'high' },
+        { key: 'priority', value: 'medium' },
+        { key: 'priority', value: 'low' },
+        { key: 'age', value: '30' },
+        { key: 'name', value: 'John Doe' },
     ]

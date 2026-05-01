@@ -10,6 +10,6 @@ if (!root) {
 
 createRoot(root).render(
     <StrictMode>
-        <SearchBox />
+        <SearchBox onSubmit={console.log} />
     </StrictMode>,
 )

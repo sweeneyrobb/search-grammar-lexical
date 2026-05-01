@@ -57,6 +57,11 @@ import './SearchBox.style.css'
 
 type SearchBoxProps = {
     data: SearchBoxData
+    onSubmit?: (data: SearchBoxData) => void
+}
+
+type SearchBoxSubmitProps = {
+    onSubmit: ((data: SearchBoxData) => void) | undefined
 }
 
 type SearchBoxAutocompleteTarget = {
@@ -135,7 +140,9 @@ function getSelectedSearchBoxPairNode(): SearchBoxPairNodeType | null {
     const anchorNode = anchor.getNode()
 
     if (anchor.type === 'element' && $isElementNode(anchorNode)) {
-        return getSearchBoxPairNode(anchorNode.getChildAtIndex(anchor.offset - 1))
+        return getSearchBoxPairNode(
+            anchorNode.getChildAtIndex(anchor.offset - 1),
+        )
     }
 
     if (anchor.type === 'text' && anchor.offset === 0) {
@@ -173,7 +180,11 @@ function getSearchBoxDelimiterBackspaceTarget(): {
     const isAtUntouchedDelimiterEnd =
         /^\s+$/.test(delimiterText) && anchor.offset === delimiterText.length
 
-    if (!isEmptyDelimiter && !isAtDelimiterStart && !isAtUntouchedDelimiterEnd) {
+    if (
+        !isEmptyDelimiter &&
+        !isAtDelimiterStart &&
+        !isAtUntouchedDelimiterEnd
+    ) {
         return null
     }
 
@@ -224,6 +235,44 @@ function formatSearchBoxAutocompleteValue(value: string): string {
     return `[${value}]`
 }
 
+function normalizeSearchBoxKey(label: string) {
+    const normalizedLabel = label.toLocaleLowerCase()
+
+    return SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION.find(item => {
+        const displayName = item.displayName ?? item.key
+
+        return (
+            item.key.toLocaleLowerCase() === normalizedLabel ||
+            displayName.toLocaleLowerCase() === normalizedLabel
+        )
+    })
+}
+
+function normalizeSearchBoxData(data: SearchBoxData): SearchBoxData {
+    return {
+        ...data,
+        structuredValue: data.structuredValue.map(item => {
+            const keyOption = normalizeSearchBoxKey(item.key)
+
+            if (!keyOption) {
+                return item
+            }
+
+            const displayName = keyOption.displayName ?? keyOption.key
+
+            return {
+                ...item,
+                displayName,
+                key: keyOption.key,
+            }
+        }),
+    }
+}
+
+function parseNormalizedSearchBoxData(text: string): SearchBoxData {
+    return normalizeSearchBoxData(parseSearchBoxText(text))
+}
+
 function replaceTextRange(
     text: string,
     startIndex: number,
@@ -267,19 +316,21 @@ function SearchBoxAutocompletePlugin() {
 
         if (target.kind === 'key') {
             return SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION.filter(item =>
-                item.toLocaleLowerCase().includes(normalizedQuery),
+                (item.displayName ?? item.key)
+                    .toLocaleLowerCase()
+                    .includes(normalizedQuery),
             ).map(item => ({
-                insertText: `${item}:`,
+                insertText: `${item.displayName ?? item.key}:`,
                 kind: 'key',
-                label: item,
+                label: item.displayName ?? item.key,
             }))
         }
 
-        const normalizedKey = target.key.toLocaleLowerCase()
+        const normalizedKey = normalizeSearchBoxKey(target.key)?.key
 
         return SEARCH_BOX_AUTOCOMPLETE_VALUE_OPTION.filter(
             item =>
-                item.key.toLocaleLowerCase() === normalizedKey &&
+                item.key === normalizedKey &&
                 item.value.toLocaleLowerCase().includes(normalizedQuery),
         ).map(item => ({
             insertText: formatSearchBoxAutocompleteValue(item.value),
@@ -322,10 +373,12 @@ function SearchBoxAutocompletePlugin() {
 
                     if (item.kind === 'value') {
                         populateSearchBoxRoot(
-                            parseSearchBoxText($getRoot().getTextContent()),
+                            parseNormalizedSearchBoxData(
+                                $getRoot().getTextContent(),
+                            ),
                         )
                     } else {
-                        const parsedData = parseSearchBoxText(
+                        const parsedData = parseNormalizedSearchBoxData(
                             $getRoot().getTextContent(),
                         )
 
@@ -368,10 +421,11 @@ function SearchBoxAutocompletePlugin() {
                     return
                 }
 
-                const autocompleteText = parseSearchBoxDelimiterAutocompleteText(
-                    anchorNode.getTextContent(),
-                    selection.anchor.offset,
-                )
+                const autocompleteText =
+                    parseSearchBoxDelimiterAutocompleteText(
+                        anchorNode.getTextContent(),
+                        selection.anchor.offset,
+                    )
 
                 if (!autocompleteText) {
                     closeAutocomplete()
@@ -470,7 +524,7 @@ function SearchBoxAutocompletePlugin() {
     )
 }
 
-function SearchBoxInteractionPlugin() {
+function SearchBoxInteractionPlugin({ onSubmit }: SearchBoxSubmitProps) {
     const [editor] = useLexicalComposerContext()
     const previousTextRef = useRef<string | null>(null)
     const isAutoParsingRef = useRef(false)
@@ -509,7 +563,7 @@ function SearchBoxInteractionPlugin() {
                     return
                 }
 
-                const parsedData = parseSearchBoxText(text)
+                const parsedData = parseNormalizedSearchBoxData(text)
 
                 if (
                     parsedData.structuredValue.length === 0 ||
@@ -533,7 +587,7 @@ function SearchBoxInteractionPlugin() {
 
         const removeClickCommand = editor.registerCommand(
             CLICK_COMMAND,
-            (event) => {
+            event => {
                 const target = event.target
 
                 if (!(target instanceof Node)) {
@@ -557,7 +611,7 @@ function SearchBoxInteractionPlugin() {
 
         const removeBackspaceCommand = editor.registerCommand(
             KEY_BACKSPACE_COMMAND,
-            (event) => {
+            event => {
                 const delimiterBackspaceTarget =
                     getSearchBoxDelimiterBackspaceTarget()
 
@@ -597,11 +651,14 @@ function SearchBoxInteractionPlugin() {
 
         const removeEnterCommand = editor.registerCommand(
             KEY_ENTER_COMMAND,
-            (event) => {
+            event => {
                 event?.preventDefault()
 
                 const text = $getRoot().getTextContent()
-                populateSearchBoxRoot(parseSearchBoxText(text))
+                const parsedData = parseNormalizedSearchBoxData(text)
+
+                populateSearchBoxRoot(parsedData)
+                onSubmit?.(parsedData)
 
                 return true
             },
@@ -614,12 +671,36 @@ function SearchBoxInteractionPlugin() {
             removeBackspaceCommand()
             removeEnterCommand()
         }
-    }, [editor])
+    }, [editor, onSubmit])
 
     return null
 }
 
-export function SearchBox({ data }: SearchBoxProps) {
+function SearchBoxSubmitPlugin({ onSubmit }: SearchBoxSubmitProps) {
+    const [editor] = useLexicalComposerContext()
+
+    const handleSubmit = useCallback(() => {
+        editor.update(() => {
+            const parsedData = parseNormalizedSearchBoxData(
+                $getRoot().getTextContent(),
+            )
+
+            populateSearchBoxRoot(parsedData)
+            onSubmit?.(parsedData)
+        })
+    }, [editor, onSubmit])
+
+    return (
+        <button
+            aria-label="Search"
+            className="search-box-submit"
+            onClick={handleSubmit}
+            type="button"
+        />
+    )
+}
+
+export function SearchBox({ data, onSubmit }: SearchBoxProps) {
     return (
         <LexicalComposer
             initialConfig={{
@@ -649,9 +730,10 @@ export function SearchBox({ data }: SearchBoxProps) {
                     <HistoryPlugin />
                     <AutoFocusPlugin />
                     <SearchBoxDataPlugin data={data} />
-                    <SearchBoxInteractionPlugin />
+                    <SearchBoxInteractionPlugin onSubmit={onSubmit} />
                     <SearchBoxAutocompletePlugin />
                 </div>
+                <SearchBoxSubmitPlugin onSubmit={onSubmit} />
             </div>
         </LexicalComposer>
     )
