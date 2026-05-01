@@ -5,6 +5,7 @@ import {
 } from 'lexical'
 
 import {
+    $createSearchBoxDelimiterNode,
     $createSearchBoxPairNode,
     $createSearchBoxUnstructuredTextNode,
 } from '../node/index.js'
@@ -35,7 +36,7 @@ export function populateSearchBoxRoot(data: SearchBoxData) {
     const paragraph = $createParagraphNode()
     const { structuredValue, unstructuredValue } = data
 
-    structuredValue.forEach(({ key, value }, index) => {
+    structuredValue.forEach(({ key, value }) => {
         const pairNode = $createSearchBoxPairNode()
 
         pairNode.append(
@@ -43,18 +44,10 @@ export function populateSearchBoxRoot(data: SearchBoxData) {
             $createTextNode(formatSearchBoxValue(value)),
         )
 
-        paragraph.append(pairNode)
-
-        if (index < structuredValue.length - 1) {
-            paragraph.append($createTextNode(' '))
-        }
+        paragraph.append(pairNode, $createSearchBoxDelimiterNode())
     })
 
     if (unstructuredValue) {
-        if (structuredValue.length > 0) {
-            paragraph.append($createTextNode(' '))
-        }
-
         paragraph.append($createSearchBoxUnstructuredTextNode(unstructuredValue))
     }
 

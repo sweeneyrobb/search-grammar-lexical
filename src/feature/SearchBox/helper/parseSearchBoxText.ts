@@ -120,11 +120,16 @@ export function parseSearchBoxText(text: string): SearchBoxData {
 
         const key = parseKey(trimmedText, index)
 
-        if (!key || trimmedText.charAt(key.nextIndex) !== ':') {
+        const colonIndex = skipWhitespace(trimmedText, key?.nextIndex ?? index)
+
+        if (!key || trimmedText.charAt(colonIndex) !== ':') {
             break
         }
 
-        const value = parseValue(trimmedText, key.nextIndex + 1)
+        const value = parseValue(
+            trimmedText,
+            skipWhitespace(trimmedText, colonIndex + 1),
+        )
 
         if (!value) {
             break

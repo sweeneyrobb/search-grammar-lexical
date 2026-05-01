@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 import { AutoFocusPlugin } from '@lexical/react/LexicalAutoFocusPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -14,18 +14,27 @@ import {
     $getSelection,
     $isElementNode,
     $isRangeSelection,
+    $isTextNode,
     CLICK_COMMAND,
     COMMAND_PRIORITY_HIGH,
     KEY_BACKSPACE_COMMAND,
     KEY_ENTER_COMMAND,
+    HISTORY_MERGE_TAG,
     type LexicalNode,
 } from 'lexical'
 
-import { parseSearchBoxText, populateSearchBoxRoot } from './helper/index.js'
 import {
+    parseSearchBoxText,
+    populateSearchBoxRoot,
+    shouldAutoParseSearchBoxText,
+} from './helper/index.js'
+import {
+    $isSearchBoxDelimiterNode,
     $isSearchBoxPairNode,
+    SearchBoxDelimiterNode,
     SearchBoxUnstructuredTextNode,
     SearchBoxPairNode,
+    type SearchBoxDelimiterNode as SearchBoxDelimiterNodeType,
     type SearchBoxPairNode as SearchBoxPairNodeType,
 } from './node/index.js'
 import type { SearchBoxData } from './type.js'
@@ -105,10 +114,97 @@ function getSelectedSearchBoxPairNode(): SearchBoxPairNodeType | null {
     return null
 }
 
+function getSearchBoxDelimiterBackspaceTarget(): {
+    delimiterNode: SearchBoxDelimiterNodeType
+    pairNode: SearchBoxPairNodeType
+} | null {
+    const selection = $getSelection()
+
+    if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+        return null
+    }
+
+    const anchor = selection.anchor
+
+    if (anchor.type !== 'text') {
+        return null
+    }
+
+    const anchorNode = anchor.getNode()
+
+    if (!$isSearchBoxDelimiterNode(anchorNode)) {
+        return null
+    }
+
+    const delimiterText = anchorNode.getTextContent()
+    const isEmptyDelimiter = delimiterText.length === 0
+    const isAtDelimiterStart = anchor.offset === 0
+    const isAtUntouchedDelimiterEnd =
+        /^\s+$/.test(delimiterText) && anchor.offset === delimiterText.length
+
+    if (!isEmptyDelimiter && !isAtDelimiterStart && !isAtUntouchedDelimiterEnd) {
+        return null
+    }
+
+    const previousSibling = anchorNode.getPreviousSibling()
+
+    if (!$isSearchBoxPairNode(previousSibling)) {
+        return null
+    }
+
+    return {
+        delimiterNode: anchorNode,
+        pairNode: previousSibling,
+    }
+}
+
 function SearchBoxInteractionPlugin() {
     const [editor] = useLexicalComposerContext()
+    const previousTextRef = useRef<string | null>(null)
+    const isAutoParsingRef = useRef(false)
 
     useEffect(() => {
+        previousTextRef.current = editor
+            .getEditorState()
+            .read(() => $getRoot().getTextContent())
+
+        const removeAutoParseListener = editor.registerUpdateListener(
+            ({ editorState }) => {
+                const text = editorState.read(() => $getRoot().getTextContent())
+                const previousText = previousTextRef.current
+
+                previousTextRef.current = text
+
+                if (
+                    isAutoParsingRef.current ||
+                    previousText === null ||
+                    !shouldAutoParseSearchBoxText(previousText, text)
+                ) {
+                    return
+                }
+
+                const parsedData = parseSearchBoxText(text)
+
+                if (
+                    parsedData.structuredValue.length === 0 ||
+                    parsedData.unstructuredValue
+                ) {
+                    return
+                }
+
+                isAutoParsingRef.current = true
+
+                editor.update(
+                    () => {
+                        populateSearchBoxRoot(parsedData)
+                    },
+                    { tag: HISTORY_MERGE_TAG },
+                )
+
+                isAutoParsingRef.current = false
+            },
+        )
+
         const removeClickCommand = editor.registerCommand(
             CLICK_COMMAND,
             (event) => {
@@ -136,6 +232,29 @@ function SearchBoxInteractionPlugin() {
         const removeBackspaceCommand = editor.registerCommand(
             KEY_BACKSPACE_COMMAND,
             (event) => {
+                const delimiterBackspaceTarget =
+                    getSearchBoxDelimiterBackspaceTarget()
+
+                if (delimiterBackspaceTarget) {
+                    const { delimiterNode, pairNode } = delimiterBackspaceTarget
+                    const nextSibling = delimiterNode.getNextSibling()
+                    const previousSibling = pairNode.getPreviousSibling()
+
+                    event.preventDefault()
+                    pairNode.remove()
+                    delimiterNode.remove()
+
+                    if ($isTextNode(nextSibling)) {
+                        nextSibling.select(0, 0)
+                    } else if ($isTextNode(previousSibling)) {
+                        previousSibling.selectEnd()
+                    } else {
+                        $getRoot().selectEnd()
+                    }
+
+                    return true
+                }
+
                 const pairNode = getSelectedSearchBoxPairNode()
 
                 if (!pairNode) {
@@ -164,6 +283,7 @@ function SearchBoxInteractionPlugin() {
         )
 
         return () => {
+            removeAutoParseListener()
             removeClickCommand()
             removeBackspaceCommand()
             removeEnterCommand()
@@ -178,7 +298,11 @@ export function SearchBox({ data }: SearchBoxProps) {
         <LexicalComposer
             initialConfig={{
                 namespace: 'SearchBox',
-                nodes: [SearchBoxPairNode, SearchBoxUnstructuredTextNode],
+                nodes: [
+                    SearchBoxDelimiterNode,
+                    SearchBoxPairNode,
+                    SearchBoxUnstructuredTextNode,
+                ],
                 onError,
                 theme,
             }}

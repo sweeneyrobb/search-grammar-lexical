@@ -1,4 +1,9 @@
 export {
+    $createSearchBoxDelimiterNode,
+    $isSearchBoxDelimiterNode,
+    SearchBoxDelimiterNode,
+} from './SearchBoxDelimiterNode.js'
+export {
     $createSearchBoxPairNode,
     $isSearchBoxPairNode,
     SearchBoxPairNode,
