@@ -40,6 +40,53 @@ function skipWhitespace(text: string, startIndex: number): number {
     return index
 }
 
+function getClosingQualifier(openingQualifier: string): string | null {
+    if (openingQualifier === '[') {
+        return ']'
+    }
+
+    if (openingQualifier === '"') {
+        return '"'
+    }
+
+    return null
+}
+
+function getQualifiedAutocompleteRange(
+    text: string,
+    startIndex: number,
+    cursorIndex: number,
+): {
+    queryEndIndex: number
+    queryStartIndex: number
+    replaceEndIndex: number
+} | null {
+    const closingQualifier = getClosingQualifier(text.charAt(startIndex))
+
+    if (!closingQualifier) {
+        return null
+    }
+
+    const closingIndex = text.indexOf(closingQualifier, startIndex + 1)
+
+    return {
+        queryEndIndex: Math.min(
+            cursorIndex,
+            closingIndex === -1 ? text.length : closingIndex,
+        ),
+        queryStartIndex: startIndex + 1,
+        replaceEndIndex: closingIndex === -1 ? text.length : closingIndex + 1,
+    }
+}
+
+function stripSearchBoxAutocompleteQualifier(text: string): string {
+    return text
+        .trim()
+        .replace(/^[\["]+/, '')
+        .replace(/[\]"]+$/, '')
+        .trim()
+}
+
 export function parseSearchBoxDelimiterAutocompleteText(
     text: string,
     cursorIndex: number,
@@ -49,21 +96,29 @@ export function parseSearchBoxDelimiterAutocompleteText(
 
     if (colonIndex !== -1 && boundedCursorIndex > colonIndex) {
         const replaceStartIndex = skipWhitespace(text, colonIndex + 1)
-        const replaceEndIndex = findNextWhitespaceIndex(
+        const qualifiedRange = getQualifiedAutocompleteRange(
             text,
-            Math.max(replaceStartIndex, boundedCursorIndex),
+            replaceStartIndex,
+            boundedCursorIndex,
         )
-        const query = text
-            .slice(
-                replaceStartIndex,
+        const replaceEndIndex =
+            qualifiedRange?.replaceEndIndex ??
+            findNextWhitespaceIndex(
+                text,
                 Math.max(replaceStartIndex, boundedCursorIndex),
             )
-            .trim()
+        const query = text
+            .slice(
+                qualifiedRange?.queryStartIndex ?? replaceStartIndex,
+                qualifiedRange?.queryEndIndex ??
+                    Math.max(replaceStartIndex, boundedCursorIndex),
+            )
+        const unqualifiedQuery = stripSearchBoxAutocompleteQualifier(query)
 
         return {
             key: text.slice(0, colonIndex).trim(),
             kind: 'value',
-            query,
+            query: unqualifiedQuery,
             replaceEndIndex,
             replaceStartIndex,
         }
@@ -78,18 +133,27 @@ export function parseSearchBoxDelimiterAutocompleteText(
             ? findNextWhitespaceIndex(text, boundedCursorIndex)
             : colonIndex + 1
     const queryEndIndex = colonIndex === -1 ? replaceEndIndex : colonIndex
+    const qualifiedRange = getQualifiedAutocompleteRange(
+        text,
+        replaceStartIndex,
+        boundedCursorIndex,
+    )
     const query = text
-        .slice(replaceStartIndex, Math.min(queryEndIndex, boundedCursorIndex))
-        .trim()
+        .slice(
+            qualifiedRange?.queryStartIndex ?? replaceStartIndex,
+            qualifiedRange?.queryEndIndex ??
+                Math.min(queryEndIndex, boundedCursorIndex),
+        )
+    const unqualifiedQuery = stripSearchBoxAutocompleteQualifier(query)
 
-    if (!query) {
+    if (!unqualifiedQuery) {
         return null
     }
 
     return {
         key: '',
         kind: 'key',
-        query,
+        query: unqualifiedQuery,
         replaceEndIndex,
         replaceStartIndex,
     }
