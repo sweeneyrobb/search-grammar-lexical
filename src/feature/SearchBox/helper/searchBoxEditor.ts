@@ -34,7 +34,7 @@ export function getSearchBoxPairNode(
 export function getSelectedSearchBoxPairNode(): SearchBoxPairNode | null {
     const selection = $getSelection()
 
-    if (!$isRangeSelection(selection)) {
+    if (!$isRangeSelection(selection) || selection.isCollapsed()) {
         return null
     }
 
@@ -64,6 +64,22 @@ export function getSelectedSearchBoxPairNode(): SearchBoxPairNode | null {
     }
 
     return null
+}
+
+export function getSelectedEmptySearchBoxPairNode(): SearchBoxPairNode | null {
+    const selection = $getSelection()
+
+    if (!$isRangeSelection(selection) || !selection.isCollapsed()) {
+        return null
+    }
+
+    const pairNode = getSearchBoxPairNode(selection.anchor.getNode())
+
+    if (!pairNode || pairNode.getTextContent()) {
+        return null
+    }
+
+    return pairNode
 }
 
 export function getSearchBoxDelimiterBackspaceTarget(): {

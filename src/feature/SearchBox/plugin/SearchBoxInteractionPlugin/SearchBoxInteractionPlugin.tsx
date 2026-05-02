@@ -16,6 +16,7 @@ import {
     ensureSearchBoxHasDefaultDelimiter,
     getSearchBoxDelimiterBackspaceTarget,
     getSearchBoxPairNode,
+    getSelectedEmptySearchBoxPairNode,
     getSelectedSearchBoxPairNode,
     parseNormalizedSearchBoxData,
     populateSearchBoxRoot,
@@ -136,6 +137,15 @@ export function SearchBoxInteractionPlugin({
                     } else {
                         $getRoot().selectEnd()
                     }
+
+                    return true
+                }
+
+                const emptyPairNode = getSelectedEmptySearchBoxPairNode()
+
+                if (emptyPairNode) {
+                    event.preventDefault()
+                    emptyPairNode.remove()
 
                     return true
                 }

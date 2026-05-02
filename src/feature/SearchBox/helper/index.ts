@@ -13,6 +13,7 @@ export {
     ensureSearchBoxHasDefaultDelimiter,
     getSearchBoxDelimiterBackspaceTarget,
     getSearchBoxPairNode,
+    getSelectedEmptySearchBoxPairNode,
     getSelectedSearchBoxPairNode,
     getSelectionRect,
 } from './searchBoxEditor.js'
