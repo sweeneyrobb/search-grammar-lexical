@@ -8,13 +8,18 @@ import {
     parseNormalizedSearchBoxData,
     populateSearchBoxRoot,
 } from '../../helper/index.js'
-import type { SearchBoxData } from '../../type.js'
+import type {
+    SearchBoxAutocompleteKeyOption,
+    SearchBoxData,
+} from '../../type.js'
 
 type SearchBoxSubmitPluginProps = {
+    keyOption: SearchBoxAutocompleteKeyOption[]
     onSubmit: ((data: SearchBoxData) => void) | undefined
 }
 
 export function SearchBoxSubmitPlugin({
+    keyOption,
     onSubmit,
 }: SearchBoxSubmitPluginProps) {
     const [editor] = useLexicalComposerContext()
@@ -23,12 +28,13 @@ export function SearchBoxSubmitPlugin({
         editor.update(() => {
             const parsedData = parseNormalizedSearchBoxData(
                 $getRoot().getTextContent(),
+                keyOption,
             )
 
             populateSearchBoxRoot(parsedData)
             onSubmit?.(parsedData)
         })
-    }, [editor, onSubmit])
+    }, [editor, keyOption, onSubmit])
 
     return <SearchBoxSubmitButton onClick={handleSubmit} />
 }

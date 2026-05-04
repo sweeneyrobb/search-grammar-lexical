@@ -6,22 +6,35 @@ import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 
 import {
+    SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION,
+    SEARCH_BOX_AUTOCOMPLETE_VALUE_OPTION,
+} from './constant.js'
+import {
     SearchBoxDelimiterNode,
     SearchBoxPairNode,
     SearchBoxUnstructuredTextNode,
 } from './node/index.js'
 import {
     SearchBoxAutocompletePlugin,
+    SearchBoxChangePlugin,
     SearchBoxDataPlugin,
     SearchBoxInteractionPlugin,
     SearchBoxSubmitPlugin,
 } from './plugin/index.js'
-import type { SearchBoxData } from './type.js'
+import type {
+    SearchBoxAutocompleteKeyOption,
+    SearchBoxAutocompleteValueOption,
+    SearchBoxChangeEvent,
+    SearchBoxData,
+} from './type.js'
 
 import './SearchBox.style.css'
 
 type SearchBoxProps = {
+    autocompleteKeyOption?: SearchBoxAutocompleteKeyOption[]
+    autocompleteValueOption?: SearchBoxAutocompleteValueOption[]
     data: SearchBoxData
+    onChange?: (event: SearchBoxChangeEvent) => void
     onSubmit?: (data: SearchBoxData) => void
 }
 
@@ -35,7 +48,13 @@ const theme = {
     },
 }
 
-export function SearchBox({ data, onSubmit }: SearchBoxProps) {
+export function SearchBox({
+    autocompleteKeyOption = SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION,
+    autocompleteValueOption = SEARCH_BOX_AUTOCOMPLETE_VALUE_OPTION,
+    data,
+    onChange,
+    onSubmit,
+}: SearchBoxProps) {
     return (
         <LexicalComposer
             initialConfig={{
@@ -65,10 +84,23 @@ export function SearchBox({ data, onSubmit }: SearchBoxProps) {
                     <HistoryPlugin />
                     <AutoFocusPlugin />
                     <SearchBoxDataPlugin data={data} />
-                    <SearchBoxInteractionPlugin onSubmit={onSubmit} />
-                    <SearchBoxAutocompletePlugin />
+                    <SearchBoxChangePlugin
+                        keyOption={autocompleteKeyOption}
+                        onChange={onChange}
+                    />
+                    <SearchBoxInteractionPlugin
+                        keyOption={autocompleteKeyOption}
+                        onSubmit={onSubmit}
+                    />
+                    <SearchBoxAutocompletePlugin
+                        keyOption={autocompleteKeyOption}
+                        valueOption={autocompleteValueOption}
+                    />
                 </div>
-                <SearchBoxSubmitPlugin onSubmit={onSubmit} />
+                <SearchBoxSubmitPlugin
+                    keyOption={autocompleteKeyOption}
+                    onSubmit={onSubmit}
+                />
             </div>
         </LexicalComposer>
     )

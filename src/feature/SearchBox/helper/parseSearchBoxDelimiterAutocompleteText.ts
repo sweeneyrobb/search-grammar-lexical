@@ -1,11 +1,4 @@
-export type SearchBoxDelimiterAutocompleteText = {
-    isBracketValue: boolean
-    key: string
-    kind: 'key' | 'value'
-    query: string
-    replaceEndIndex: number
-    replaceStartIndex: number
-}
+import type { SearchBoxAutocompleteContext } from '../type.js'
 
 function findNextWhitespaceIndex(text: string, startIndex: number): number {
     const whitespaceMatch = /\s/.exec(text.slice(startIndex))
@@ -202,7 +195,7 @@ function stripSearchBoxAutocompleteQualifier(text: string): string {
 export function parseSearchBoxDelimiterAutocompleteText(
     text: string,
     cursorIndex: number,
-): SearchBoxDelimiterAutocompleteText | null {
+): SearchBoxAutocompleteContext | null {
     const boundedCursorIndex = Math.min(Math.max(cursorIndex, 0), text.length)
     const colonIndex = text.indexOf(':')
 

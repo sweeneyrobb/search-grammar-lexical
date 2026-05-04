@@ -17,6 +17,21 @@ export type SearchBoxData = {
     unstructuredValue: string
 }
 
+export type SearchBoxAutocompleteContext = {
+    isBracketValue: boolean
+    key: string
+    kind: 'key' | 'value'
+    query: string
+    replaceEndIndex: number
+    replaceStartIndex: number
+}
+
+export type SearchBoxChangeEvent = {
+    autocomplete: SearchBoxAutocompleteContext | null
+    data: SearchBoxData
+    text: string
+}
+
 export type SearchBoxAutocompleteValueOption = {
     key: string
     value: string

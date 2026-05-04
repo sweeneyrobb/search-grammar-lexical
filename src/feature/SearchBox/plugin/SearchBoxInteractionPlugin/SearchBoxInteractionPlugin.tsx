@@ -23,13 +23,18 @@ import {
     populateSearchBoxRoot,
     shouldAutoParseSearchBoxText,
 } from '../../helper/index.js'
-import type { SearchBoxData } from '../../type.js'
+import type {
+    SearchBoxAutocompleteKeyOption,
+    SearchBoxData,
+} from '../../type.js'
 
 type SearchBoxInteractionPluginProps = {
+    keyOption: SearchBoxAutocompleteKeyOption[]
     onSubmit: ((data: SearchBoxData) => void) | undefined
 }
 
 export function SearchBoxInteractionPlugin({
+    keyOption,
     onSubmit,
 }: SearchBoxInteractionPluginProps) {
     const [editor] = useLexicalComposerContext()
@@ -70,7 +75,7 @@ export function SearchBoxInteractionPlugin({
                     return
                 }
 
-                const parsedData = parseNormalizedSearchBoxData(text)
+                const parsedData = parseNormalizedSearchBoxData(text, keyOption)
 
                 if (
                     parsedData.structuredValue.length === 0 ||
@@ -168,7 +173,7 @@ export function SearchBoxInteractionPlugin({
                 event?.preventDefault()
 
                 const text = $getRoot().getTextContent()
-                const parsedData = parseNormalizedSearchBoxData(text)
+                const parsedData = parseNormalizedSearchBoxData(text, keyOption)
 
                 populateSearchBoxRoot(parsedData)
                 onSubmit?.(parsedData)
@@ -184,7 +189,7 @@ export function SearchBoxInteractionPlugin({
             removeBackspaceCommand()
             removeEnterCommand()
         }
-    }, [editor, onSubmit])
+    }, [editor, keyOption, onSubmit])
 
     return null
 }

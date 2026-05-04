@@ -1,10 +1,13 @@
 import { SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION } from '../constant.js'
-import type { SearchBoxData } from '../type.js'
+import type { SearchBoxAutocompleteKeyOption, SearchBoxData } from '../type.js'
 
-export function normalizeSearchBoxKey(label: string) {
+export function normalizeSearchBoxKey(
+    label: string,
+    keyOption: SearchBoxAutocompleteKeyOption[] = SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION,
+) {
     const normalizedLabel = label.toLocaleLowerCase()
 
-    return SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION.find(item => {
+    return keyOption.find(item => {
         const displayName = item.displayName ?? item.key
 
         return (
@@ -14,22 +17,29 @@ export function normalizeSearchBoxKey(label: string) {
     })
 }
 
-export function normalizeSearchBoxData(data: SearchBoxData): SearchBoxData {
+export function normalizeSearchBoxData(
+    data: SearchBoxData,
+    keyOption?: SearchBoxAutocompleteKeyOption[],
+): SearchBoxData {
     return {
         ...data,
         structuredValue: data.structuredValue.map(item => {
-            const keyOption = normalizeSearchBoxKey(item.key)
+            const normalizedKeyOption = normalizeSearchBoxKey(
+                item.key,
+                keyOption,
+            )
 
-            if (!keyOption) {
+            if (!normalizedKeyOption) {
                 return item
             }
 
-            const displayName = keyOption.displayName ?? keyOption.key
+            const displayName =
+                normalizedKeyOption.displayName ?? normalizedKeyOption.key
 
             return {
                 ...item,
                 displayName,
-                key: keyOption.key,
+                key: normalizedKeyOption.key,
             }
         }),
     }

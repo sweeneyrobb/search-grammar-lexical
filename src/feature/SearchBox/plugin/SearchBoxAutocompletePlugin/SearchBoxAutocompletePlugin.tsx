@@ -20,10 +20,6 @@ import {
 
 import { SearchBoxAutocomplete } from '../../component/index.js'
 import {
-    SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION,
-    SEARCH_BOX_AUTOCOMPLETE_VALUE_OPTION,
-} from '../../constant.js'
-import {
     formatSearchBoxAutocompleteValue,
     getSelectionRect,
     normalizeSearchBoxKey,
@@ -33,16 +29,15 @@ import {
     replaceTextRange,
 } from '../../helper/index.js'
 import { $isSearchBoxDelimiterNode } from '../../node/index.js'
+import type {
+    SearchBoxAutocompleteContext,
+    SearchBoxAutocompleteKeyOption,
+    SearchBoxAutocompleteValueOption,
+} from '../../type.js'
 
-type SearchBoxAutocompleteTarget = {
-    isBracketValue: boolean
-    key: string
-    kind: 'key' | 'value'
+type SearchBoxAutocompleteTarget = SearchBoxAutocompleteContext & {
     left: number
     nodeKey: NodeKey
-    query: string
-    replaceEndIndex: number
-    replaceStartIndex: number
     top: number
 }
 
@@ -52,7 +47,15 @@ type SearchBoxAutocompleteMatch = {
     label: string
 }
 
-export function SearchBoxAutocompletePlugin() {
+type SearchBoxAutocompletePluginProps = {
+    keyOption: SearchBoxAutocompleteKeyOption[]
+    valueOption: SearchBoxAutocompleteValueOption[]
+}
+
+export function SearchBoxAutocompletePlugin({
+    keyOption,
+    valueOption,
+}: SearchBoxAutocompletePluginProps) {
     const [editor] = useLexicalComposerContext()
     const [target, setTarget] = useState<SearchBoxAutocompleteTarget | null>(
         null,
@@ -67,29 +70,33 @@ export function SearchBoxAutocompletePlugin() {
         const normalizedQuery = target.query.toLocaleLowerCase()
 
         if (target.kind === 'key') {
-            return SEARCH_BOX_AUTOCOMPLETE_KEY_OPTION.filter(item =>
-                (item.displayName ?? item.key)
-                    .toLocaleLowerCase()
-                    .includes(normalizedQuery),
-            ).map(item => ({
-                insertText: `${item.displayName ?? item.key}:`,
-                kind: 'key',
-                label: item.displayName ?? item.key,
-            }))
+            return keyOption
+                .filter(item =>
+                    (item.displayName ?? item.key)
+                        .toLocaleLowerCase()
+                        .includes(normalizedQuery),
+                )
+                .map(item => ({
+                    insertText: `${item.displayName ?? item.key}:`,
+                    kind: 'key',
+                    label: item.displayName ?? item.key,
+                }))
         }
 
-        const normalizedKey = normalizeSearchBoxKey(target.key)?.key
+        const normalizedKey = normalizeSearchBoxKey(target.key, keyOption)?.key
 
-        return SEARCH_BOX_AUTOCOMPLETE_VALUE_OPTION.filter(
-            item =>
-                item.key === normalizedKey &&
-                item.value.toLocaleLowerCase().includes(normalizedQuery),
-        ).map(item => ({
-            insertText: formatSearchBoxAutocompleteValue(item.value),
-            kind: 'value',
-            label: item.value,
-        }))
-    }, [target])
+        return valueOption
+            .filter(
+                item =>
+                    item.key === normalizedKey &&
+                    item.value.toLocaleLowerCase().includes(normalizedQuery),
+            )
+            .map(item => ({
+                insertText: formatSearchBoxAutocompleteValue(item.value),
+                kind: 'value',
+                label: item.value,
+            }))
+    }, [keyOption, target, valueOption])
 
     const closeAutocomplete = useCallback(() => {
         setTarget(null)
@@ -135,11 +142,13 @@ export function SearchBoxAutocompletePlugin() {
                         populateSearchBoxRoot(
                             parseNormalizedSearchBoxData(
                                 $getRoot().getTextContent(),
+                                keyOption,
                             ),
                         )
                     } else {
                         const parsedData = parseNormalizedSearchBoxData(
                             $getRoot().getTextContent(),
+                            keyOption,
                         )
 
                         if (
@@ -157,7 +166,7 @@ export function SearchBoxAutocompletePlugin() {
 
             return true
         },
-        [closeAutocomplete, editor, target],
+        [closeAutocomplete, editor, keyOption, target],
     )
 
     useEffect(() => {
