@@ -4,6 +4,8 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
     $getNearestNodeFromDOMNode,
     $getRoot,
+    $getSelection,
+    $isRangeSelection,
     $isTextNode,
     CLICK_COMMAND,
     COMMAND_PRIORITY_HIGH,
@@ -17,7 +19,6 @@ import {
     getSearchBoxDelimiterBackspaceTarget,
     getSearchBoxPairNode,
     getSelectedEmptySearchBoxPairNode,
-    getSelectedSearchBoxPairNode,
     parseNormalizedSearchBoxData,
     populateSearchBoxRoot,
     shouldAutoParseSearchBoxText,
@@ -118,6 +119,12 @@ export function SearchBoxInteractionPlugin({
         const removeBackspaceCommand = editor.registerCommand(
             KEY_BACKSPACE_COMMAND,
             event => {
+                const selection = $getSelection()
+
+                if ($isRangeSelection(selection) && !selection.isCollapsed()) {
+                    return false
+                }
+
                 const delimiterBackspaceTarget =
                     getSearchBoxDelimiterBackspaceTarget()
 
@@ -150,16 +157,7 @@ export function SearchBoxInteractionPlugin({
                     return true
                 }
 
-                const pairNode = getSelectedSearchBoxPairNode()
-
-                if (!pairNode) {
-                    return false
-                }
-
-                event.preventDefault()
-                pairNode.remove()
-
-                return true
+                return false
             },
             COMMAND_PRIORITY_HIGH,
         )
