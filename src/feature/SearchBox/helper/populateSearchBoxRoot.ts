@@ -5,7 +5,11 @@ import {
     $createSearchBoxPairNode,
     $createSearchBoxUnstructuredTextNode,
 } from '../node/index.js'
-import type { SearchBoxData } from '../type.js'
+import type {
+    SearchBoxData,
+    SearchBoxDataValue,
+    SearchBoxRangeValue,
+} from '../type.js'
 
 function formatSearchBoxKey(key: string): string {
     if (!/[\s:]/.test(key)) {
@@ -15,7 +19,29 @@ function formatSearchBoxKey(key: string): string {
     return `[${key}]`
 }
 
-function formatSearchBoxValue(value: string): string {
+function isSearchBoxRangeValue(
+    value: SearchBoxDataValue,
+): value is SearchBoxRangeValue {
+    return typeof value === 'object' && !Array.isArray(value)
+}
+
+function formatSearchBoxListItem(value: string): string {
+    if (!value || /[\s,]/.test(value)) {
+        return `"${value}"`
+    }
+
+    return value
+}
+
+function formatSearchBoxValue(value: SearchBoxDataValue): string {
+    if (Array.isArray(value)) {
+        return `[${value.map(formatSearchBoxListItem).join(', ')}]`
+    }
+
+    if (isSearchBoxRangeValue(value)) {
+        return `[${value.start} - ${value.end}]`
+    }
+
     if (!/\s/.test(value)) {
         return value
     }

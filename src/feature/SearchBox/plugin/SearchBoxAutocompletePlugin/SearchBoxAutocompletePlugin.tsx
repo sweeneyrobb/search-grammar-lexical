@@ -6,10 +6,14 @@ import {
     $getRoot,
     $getSelection,
     $isRangeSelection,
+    COMMAND_PRIORITY_CRITICAL,
     COMMAND_PRIORITY_HIGH,
     HISTORY_MERGE_TAG,
     KEY_ARROW_DOWN_COMMAND,
     KEY_ARROW_UP_COMMAND,
+    KEY_DOWN_COMMAND,
+    KEY_ENTER_COMMAND,
+    KEY_ESCAPE_COMMAND,
     KEY_TAB_COMMAND,
     type NodeKey,
 } from 'lexical'
@@ -31,6 +35,7 @@ import {
 import { $isSearchBoxDelimiterNode } from '../../node/index.js'
 
 type SearchBoxAutocompleteTarget = {
+    isBracketValue: boolean
     key: string
     kind: 'key' | 'value'
     left: number
@@ -52,7 +57,7 @@ export function SearchBoxAutocompletePlugin() {
     const [target, setTarget] = useState<SearchBoxAutocompleteTarget | null>(
         null,
     )
-    const [activeIndex, setActiveIndex] = useState(0)
+    const [activeIndex, setActiveIndex] = useState<number | null>(null)
 
     const match = useMemo<SearchBoxAutocompleteMatch[]>(() => {
         if (!target) {
@@ -88,11 +93,15 @@ export function SearchBoxAutocompletePlugin() {
 
     const closeAutocomplete = useCallback(() => {
         setTarget(null)
-        setActiveIndex(0)
+        setActiveIndex(null)
     }, [])
 
     const acceptOption = useCallback(
-        (item: SearchBoxAutocompleteMatch) => {
+        (
+            item: SearchBoxAutocompleteMatch,
+            insertText = item.insertText,
+            shouldPopulateRoot = true,
+        ) => {
             if (!target) {
                 return false
             }
@@ -110,13 +119,17 @@ export function SearchBoxAutocompletePlugin() {
                         targetText,
                         target.replaceStartIndex,
                         target.replaceEndIndex,
-                        item.insertText,
+                        insertText,
                     )
                     const selectionIndex =
-                        target.replaceStartIndex + item.insertText.length
+                        target.replaceStartIndex + insertText.length
 
                     targetNode.setTextContent(completedText)
                     targetNode.select(selectionIndex, selectionIndex)
+
+                    if (!shouldPopulateRoot) {
+                        return
+                    }
 
                     if (item.kind === 'value') {
                         populateSearchBoxRoot(
@@ -187,6 +200,7 @@ export function SearchBoxAutocompletePlugin() {
                 }
 
                 setTarget({
+                    isBracketValue: autocompleteText.isBracketValue,
                     key: autocompleteText.key,
                     kind: autocompleteText.kind,
                     left: rect.left,
@@ -201,7 +215,7 @@ export function SearchBoxAutocompletePlugin() {
     }, [closeAutocomplete, editor])
 
     useEffect(() => {
-        setActiveIndex(0)
+        setActiveIndex(null)
     }, [target?.query])
 
     useEffect(() => {
@@ -214,7 +228,9 @@ export function SearchBoxAutocompletePlugin() {
             event => {
                 event?.preventDefault()
                 setActiveIndex(currentIndex =>
-                    currentIndex + 1 >= match.length ? 0 : currentIndex + 1,
+                    currentIndex === null || currentIndex + 1 >= match.length
+                        ? 0
+                        : currentIndex + 1,
                 )
 
                 return true
@@ -226,7 +242,9 @@ export function SearchBoxAutocompletePlugin() {
             event => {
                 event?.preventDefault()
                 setActiveIndex(currentIndex =>
-                    currentIndex - 1 < 0 ? match.length - 1 : currentIndex - 1,
+                    currentIndex === null || currentIndex - 1 < 0
+                        ? match.length - 1
+                        : currentIndex - 1,
                 )
 
                 return true
@@ -236,15 +254,78 @@ export function SearchBoxAutocompletePlugin() {
         const removeTabCommand = editor.registerCommand(
             KEY_TAB_COMMAND,
             event => {
-                event?.preventDefault()
-
-                const item = match[activeIndex] ?? match[0]
+                const item =
+                    activeIndex === null ? undefined : match[activeIndex]
 
                 if (!item) {
                     return false
                 }
 
+                event?.preventDefault()
+
                 return acceptOption(item)
+            },
+            COMMAND_PRIORITY_HIGH,
+        )
+        const removeCommaCommand = editor.registerCommand(
+            KEY_DOWN_COMMAND,
+            event => {
+                if (target?.kind !== 'value' || !target.isBracketValue) {
+                    return false
+                }
+
+                const item =
+                    activeIndex === null ? undefined : match[activeIndex]
+
+                if (!item) {
+                    return false
+                }
+
+                if (event.key === ',') {
+                    event.preventDefault()
+
+                    return acceptOption(item, `${item.insertText}, `, false)
+                }
+
+                if (event.key === '-') {
+                    event.preventDefault()
+
+                    return acceptOption(item, `${item.insertText} - `, false)
+                }
+
+                if (event.key === ']') {
+                    event.preventDefault()
+
+                    return acceptOption(item, `${item.insertText}]`)
+                }
+
+                return false
+            },
+            COMMAND_PRIORITY_CRITICAL,
+        )
+        const removeEnterCommand = editor.registerCommand(
+            KEY_ENTER_COMMAND,
+            event => {
+                const item =
+                    activeIndex === null ? undefined : match[activeIndex]
+
+                if (!item) {
+                    return false
+                }
+
+                event?.preventDefault()
+
+                return acceptOption(item)
+            },
+            COMMAND_PRIORITY_CRITICAL,
+        )
+        const removeEscapeCommand = editor.registerCommand(
+            KEY_ESCAPE_COMMAND,
+            event => {
+                event.preventDefault()
+                closeAutocomplete()
+
+                return true
             },
             COMMAND_PRIORITY_HIGH,
         )
@@ -253,8 +334,11 @@ export function SearchBoxAutocompletePlugin() {
             removeArrowDownCommand()
             removeArrowUpCommand()
             removeTabCommand()
+            removeCommaCommand()
+            removeEnterCommand()
+            removeEscapeCommand()
         }
-    }, [acceptOption, activeIndex, editor, match])
+    }, [acceptOption, activeIndex, closeAutocomplete, editor, match, target])
 
     if (!target) {
         return null

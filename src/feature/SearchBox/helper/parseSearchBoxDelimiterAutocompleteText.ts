@@ -1,4 +1,5 @@
 export type SearchBoxDelimiterAutocompleteText = {
+    isBracketValue: boolean
     key: string
     kind: 'key' | 'value'
     query: string
@@ -79,6 +80,117 @@ function getQualifiedAutocompleteRange(
     }
 }
 
+function skipSearchBoxAutocompleteWhitespace(
+    text: string,
+    startIndex: number,
+    endIndex: number,
+) {
+    let index = startIndex
+
+    while (index < endIndex && /\s/.test(text.charAt(index))) {
+        index += 1
+    }
+
+    return index
+}
+
+function isSearchBoxBracketValueDelimiter(character: string) {
+    return character === ',' || character === '-'
+}
+
+function findNextUnquotedBracketValueDelimiterIndex(
+    text: string,
+    startIndex: number,
+    endIndex: number,
+) {
+    let isInsideQuote = false
+
+    for (let index = startIndex; index < endIndex; index += 1) {
+        const character = text.charAt(index)
+
+        if (character === '"') {
+            isInsideQuote = !isInsideQuote
+            continue
+        }
+
+        if (isSearchBoxBracketValueDelimiter(character) && !isInsideQuote) {
+            return index
+        }
+    }
+
+    return -1
+}
+
+function findPreviousUnquotedBracketValueDelimiterIndex(
+    text: string,
+    startIndex: number,
+    endIndex: number,
+) {
+    let isInsideQuote = false
+
+    for (let index = startIndex; index >= endIndex; index -= 1) {
+        const character = text.charAt(index)
+
+        if (character === '"') {
+            isInsideQuote = !isInsideQuote
+            continue
+        }
+
+        if (isSearchBoxBracketValueDelimiter(character) && !isInsideQuote) {
+            return index
+        }
+    }
+
+    return -1
+}
+
+function getBracketValueAutocompleteRange(
+    text: string,
+    startIndex: number,
+    cursorIndex: number,
+): {
+    queryEndIndex: number
+    queryStartIndex: number
+    replaceEndIndex: number
+    replaceStartIndex: number
+} | null {
+    if (text.charAt(startIndex) !== '[') {
+        return null
+    }
+
+    const bracketContentStartIndex = startIndex + 1
+    const bracketEndIndex = text.indexOf(']', bracketContentStartIndex)
+    const contentEndIndex =
+        bracketEndIndex === -1 ? text.length : bracketEndIndex
+    const boundedCursorIndex = Math.min(cursorIndex, contentEndIndex)
+    const previousDelimiterIndex =
+        findPreviousUnquotedBracketValueDelimiterIndex(
+            text,
+            boundedCursorIndex - 1,
+            bracketContentStartIndex,
+        )
+    const queryStartIndex = skipSearchBoxAutocompleteWhitespace(
+        text,
+        previousDelimiterIndex === -1
+            ? bracketContentStartIndex
+            : previousDelimiterIndex + 1,
+        contentEndIndex,
+    )
+    const nextDelimiterIndex = findNextUnquotedBracketValueDelimiterIndex(
+        text,
+        boundedCursorIndex,
+        contentEndIndex,
+    )
+
+    return {
+        queryEndIndex: boundedCursorIndex,
+        queryStartIndex,
+        replaceEndIndex:
+            nextDelimiterIndex === -1 ? contentEndIndex : nextDelimiterIndex,
+        replaceStartIndex: queryStartIndex,
+    }
+}
+
 function stripSearchBoxAutocompleteQualifier(text: string): string {
     return text
         .trim()
@@ -95,27 +207,38 @@ export function parseSearchBoxDelimiterAutocompleteText(
     const colonIndex = text.indexOf(':')
 
     if (colonIndex !== -1 && boundedCursorIndex > colonIndex) {
-        const replaceStartIndex = skipWhitespace(text, colonIndex + 1)
+        const valueStartIndex = skipWhitespace(text, colonIndex + 1)
+        const bracketRange = getBracketValueAutocompleteRange(
+            text,
+            valueStartIndex,
+            boundedCursorIndex,
+        )
+        const replaceStartIndex =
+            bracketRange?.replaceStartIndex ?? valueStartIndex
         const qualifiedRange = getQualifiedAutocompleteRange(
             text,
-            replaceStartIndex,
+            valueStartIndex,
             boundedCursorIndex,
         )
         const replaceEndIndex =
+            bracketRange?.replaceEndIndex ??
             qualifiedRange?.replaceEndIndex ??
             findNextWhitespaceIndex(
                 text,
                 Math.max(replaceStartIndex, boundedCursorIndex),
             )
-        const query = text
-            .slice(
-                qualifiedRange?.queryStartIndex ?? replaceStartIndex,
+        const query = text.slice(
+            bracketRange?.queryStartIndex ??
+                qualifiedRange?.queryStartIndex ??
+                replaceStartIndex,
+            bracketRange?.queryEndIndex ??
                 qualifiedRange?.queryEndIndex ??
-                    Math.max(replaceStartIndex, boundedCursorIndex),
-            )
+                Math.max(replaceStartIndex, boundedCursorIndex),
+        )
         const unqualifiedQuery = stripSearchBoxAutocompleteQualifier(query)
 
         return {
+            isBracketValue: Boolean(bracketRange),
             key: text.slice(0, colonIndex).trim(),
             kind: 'value',
             query: unqualifiedQuery,
@@ -124,10 +247,8 @@ export function parseSearchBoxDelimiterAutocompleteText(
         }
     }
 
-    const replaceStartIndex = findPreviousWhitespaceIndex(
-        text,
-        boundedCursorIndex,
-    ) + 1
+    const replaceStartIndex =
+        findPreviousWhitespaceIndex(text, boundedCursorIndex) + 1
     const replaceEndIndex =
         colonIndex === -1
             ? findNextWhitespaceIndex(text, boundedCursorIndex)
@@ -138,12 +259,11 @@ export function parseSearchBoxDelimiterAutocompleteText(
         replaceStartIndex,
         boundedCursorIndex,
     )
-    const query = text
-        .slice(
-            qualifiedRange?.queryStartIndex ?? replaceStartIndex,
-            qualifiedRange?.queryEndIndex ??
-                Math.min(queryEndIndex, boundedCursorIndex),
-        )
+    const query = text.slice(
+        qualifiedRange?.queryStartIndex ?? replaceStartIndex,
+        qualifiedRange?.queryEndIndex ??
+            Math.min(queryEndIndex, boundedCursorIndex),
+    )
     const unqualifiedQuery = stripSearchBoxAutocompleteQualifier(query)
 
     if (!unqualifiedQuery) {
@@ -151,6 +271,7 @@ export function parseSearchBoxDelimiterAutocompleteText(
     }
 
     return {
+        isBracketValue: false,
         key: '',
         kind: 'key',
         query: unqualifiedQuery,

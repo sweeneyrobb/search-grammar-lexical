@@ -1,8 +1,8 @@
-import type { SearchBoxData } from '../type.js'
+import type { SearchBoxData, SearchBoxDataValue } from '../type.js'
 
-type ParseResult = {
-    value: string
+type ParseResult<TValue = string> = {
     nextIndex: number
+    value: TValue
 }
 
 const isWhitespace = (character: string) => /\s/.test(character)
@@ -51,6 +51,101 @@ function parseQuotedValue(text: string, index: number): ParseResult | null {
     }
 }
 
+function unquoteSearchBoxValue(value: string): string {
+    const trimmedValue = value.trim()
+
+    if (trimmedValue.startsWith('"') && trimmedValue.endsWith('"')) {
+        return trimmedValue.slice(1, -1)
+    }
+
+    return trimmedValue
+}
+
+function splitCommaSeparatedValue(value: string): string[] {
+    const item: string[] = []
+    let currentItem = ''
+    let isInsideQuote = false
+
+    for (const character of value) {
+        if (character === '"') {
+            isInsideQuote = !isInsideQuote
+            currentItem += character
+            continue
+        }
+
+        if (character === ',' && !isInsideQuote) {
+            item.push(unquoteSearchBoxValue(currentItem))
+            currentItem = ''
+            continue
+        }
+
+        currentItem += character
+    }
+
+    const finalItem = unquoteSearchBoxValue(currentItem)
+
+    if (finalItem || !/,\s*$/.test(value)) {
+        item.push(finalItem)
+    }
+
+    return item
+}
+
+function splitRangeValue(value: string): [string, string] | null {
+    let isInsideQuote = false
+    const rangeSeparatorIndex: number[] = []
+
+    for (let index = 0; index < value.length; index += 1) {
+        const character = value.charAt(index)
+
+        if (character === '"') {
+            isInsideQuote = !isInsideQuote
+            continue
+        }
+
+        if (character === '-' && !isInsideQuote) {
+            rangeSeparatorIndex.push(index)
+        }
+    }
+
+    if (rangeSeparatorIndex.length !== 1) {
+        return null
+    }
+
+    const separatorIndex = rangeSeparatorIndex[0]
+
+    if (separatorIndex === undefined) {
+        return null
+    }
+
+    return [
+        unquoteSearchBoxValue(value.slice(0, separatorIndex)),
+        unquoteSearchBoxValue(value.slice(separatorIndex + 1)),
+    ]
+}
+
+function parseBracketSearchBoxValue(value: string): SearchBoxDataValue {
+    const listValue = splitCommaSeparatedValue(value)
+
+    if (listValue.length > 1) {
+        return listValue
+    }
+
+    const rangeValue = splitRangeValue(value)
+
+    if (rangeValue) {
+        const [start, end] = rangeValue
+
+        return {
+            end,
+            kind: 'range',
+            start,
+        }
+    }
+
+    return value
+}
+
 function parseKey(text: string, index: number): ParseResult | null {
     const bracketKey = parseBracketValue(text, index)
 
@@ -78,12 +173,23 @@ function parseKey(text: string, index: number): ParseResult | null {
     }
 }
 
-function parseValue(text: string, index: number): ParseResult | null {
-    const qualifiedValue =
-        parseBracketValue(text, index) ?? parseQuotedValue(text, index)
+function parseValue(
+    text: string,
+    index: number,
+): ParseResult<SearchBoxDataValue> | null {
+    const bracketValue = parseBracketValue(text, index)
 
-    if (qualifiedValue) {
-        return qualifiedValue
+    if (bracketValue) {
+        return {
+            ...bracketValue,
+            value: parseBracketSearchBoxValue(bracketValue.value),
+        }
+    }
+
+    const quotedValue = parseQuotedValue(text, index)
+
+    if (quotedValue) {
+        return quotedValue
     }
 
     let nextIndex = index

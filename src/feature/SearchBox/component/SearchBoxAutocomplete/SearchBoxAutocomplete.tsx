@@ -7,7 +7,7 @@ type SearchBoxAutocompleteOption = {
 }
 
 type SearchBoxAutocompleteProps<TOption extends SearchBoxAutocompleteOption> = {
-    activeIndex: number
+    activeIndex: number | null
     left: number
     onSelect: (option: TOption) => void
     option: TOption[]

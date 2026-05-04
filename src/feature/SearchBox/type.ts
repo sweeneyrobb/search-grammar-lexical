@@ -1,7 +1,15 @@
+export type SearchBoxRangeValue = {
+    end: string
+    kind: 'range'
+    start: string
+}
+
+export type SearchBoxDataValue = string | string[] | SearchBoxRangeValue
+
 export type SearchBoxDataItem = {
     displayName?: string
     key: string
-    value: string
+    value: SearchBoxDataValue
 }
 
 export type SearchBoxData = {
